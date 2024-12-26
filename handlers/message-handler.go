@@ -3,46 +3,42 @@ package handlers
 import (
 	"github.com/bwmarrin/discordgo"
 	"log"
+	messageCreate "sti-discord-bot/handlers/message-create"
 	"strings"
 )
 
-const prefix string = "sti!"
-
-func getCommandName(command string) string {
-	return prefix + command
-}
-
 func AddMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
-	// do not respond to himself
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
-	firstWordOfTheMessage := strings.Split(m.Content, " ")[0]
-	if firstWordOfTheMessage == getCommandName("ping") {
-		_, err := s.ChannelMessageSend(m.ChannelID, "Pong!")
-		if err != nil {
-			log.Println(err)
-		}
-	} else if firstWordOfTheMessage == getCommandName("help") {
-		embed := &discordgo.MessageEmbed{
-			Title: "Help",
-			Description: `Welcome To the jungle!
-						
-			Aku Bot STI versi 2.0. Ditulis dengan Bahasa Pemrograman Go oleh mas zeev-haydar (https://github.com/zeev-haydar)
-							
-			Jenis Command yang tersedia untuk saat ini:
 
-			**sti!ping**: Untuk ngetes 
-			`,
-			Color: 1,
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: "Perintah dipanggil oleh: " + m.Author.Username + " alias " + m.Author.GlobalName,
-			},
-		}
-		_, err := s.ChannelMessageSendEmbed(m.ChannelID, embed)
-		if err != nil {
-			log.Println(err)
-		}
+	// Ensure the message starts with "sti!"
+	if !strings.HasPrefix(m.Content, "sti!") {
+		return
+	}
+	args := parseCommandArgumentsPreserveCase(m.Content)
+	if len(args) == 0 {
+		return
+	}
 
+	commands := []CommandHandler{
+		{Keyword: getCommandName("ping"), Handler: messageCreate.HandlePing},
+		{Keyword: getCommandName("help"), Handler: messageCreate.HandleHelp},
+		{Keyword: getCommandName("add"), Handler: messageCreate.HandleAdd},
+		{Keyword: getCommandName("find"), Handler: messageCreate.HandleFind},
+		{Keyword: getCommandName("media"), Handler: messageCreate.HandleMedia},
+	}
+
+	firstWordOfTheMessage := args[0]
+	for _, cmd := range commands {
+		if firstWordOfTheMessage == cmd.Keyword {
+			cmd.Handler(s, m, args)
+			return
+		}
+	}
+
+	_, err := s.ChannelMessageSend(m.ChannelID, "Command not found")
+	if err != nil {
+		log.Println(err)
 	}
 }

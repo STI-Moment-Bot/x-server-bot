@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
@@ -34,7 +35,6 @@ func main() {
 
 	// Connect to the database
 	err = databases.ConnectDB(dbUri)
-
 	if err != nil {
 		log.Printf("Error connecting to database: %s", err)
 	}
@@ -56,6 +56,12 @@ func main() {
 			log.Fatalf("Error closing session: %v", err)
 		}
 	}(session)
+
+	defer func() {
+		if err := databases.Client.Disconnect(context.TODO()); err != nil {
+			panic(err)
+		}
+	}()
 
 	log.Println("Bot is now running.  Press CTRL-C to exit.")
 
